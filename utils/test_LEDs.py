@@ -20,11 +20,11 @@ try:
                 flasher._SET_LEDS(board, LED_bits)
             flasher._TEST_PULSE(1)
             time.sleep(0.1)
-            for board in range(0, 1): #4):
+            for board in range(0, 4):
                 if (flasher._READ_TRIG(board) != 1): print('TRIG did not match on board %d!!' % board)
             flasher._TEST_PULSE(0)
             time.sleep(0.1)
-            for board in range(0, 1): #4):
+            for board in range(0, 4):
                 if (flasher._READ_TRIG(board) != 0): print('TRIG did not match on board %d!!' % board)
             time.sleep(0.8)
 except KeyboardInterrupt:

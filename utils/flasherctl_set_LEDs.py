@@ -27,4 +27,4 @@ if __name__ == '__main__':
     flasher = flasherctl.FlasherCtl(args.ip, args.p, verbosity=0)
 
     print "configuring LEDs on board ", args.board
-    flasher._START_LEDS(args.board, int(args.ten_bit_string, 2))
+    flasher._SET_LEDS(args.board, int(args.ten_bit_string, 2))

@@ -1,5 +1,6 @@
 # FlasherCtl
 
-Arduino (C) and Python code for the CTA Calibration Flasher
 
-Based extentively on Felix Werner's ServoCtl
+Arduino (C) and Python code for V2 of the CTA Calibration Flasher
+
+Based extensively on Felix Werner's ServoCtl
