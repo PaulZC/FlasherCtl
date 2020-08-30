@@ -20,7 +20,7 @@ SYS_FLASHER = 2
 class FlasherError:
     """Errors encountered during communication."""
     ERR_BVALUE = 1  # Binary / Boolean Value was not 1 (on) or 0 (off) (for LED_BUILTIN)
-    ERR_FLASHER_ID = 2 # Flasher ID was not in the range 0:3
+    ERR_SERIAL_NO = 2 # Error reading flasher serial number
     ERR_TIMEDOUT = 128  # Communication with flasher timed out
     ERR_RX_CHECKSUM = 256  # Checksum error in flasher response
     ERR_MISMATCH = 512  # Received response from different flasher ID
@@ -33,13 +33,10 @@ class FlasherCommand:
     CMD_LED_BUILTIN = 0
     CMD_START_TEMPERATURE = 1
     CMD_READ_TEMPERATURE = 2
-    CMD_INIT_FLASHER = 3
-    CMD_SET_GPO_PIN = 4
-    CMD_READ_SERIAL_NO = 5
-    CMD_SET_LEDS = 6
-    CMD_SET_PULSE_WIDTH = 7
-    CMD_TEST_PULSE = 8
-    CMD_READ_TRIG = 9
+    CMD_READ_SERIAL_NO = 3
+    CMD_SET_LED_CURRENT = 4
+    CMD_SET_PULSE_WIDTH = 5
+    CMD_TEST_PULSE = 6
     CMD_REPORT_ERR = 65535
 
 
@@ -89,97 +86,53 @@ class FlasherCtl(iostack.IOStack):
 
         self._raise_error(response)
 
-    def _START_TEMPERATURE(self, board):
-        """Start an ADT7310TRZ temperature measurement on the selected timing board.
+    def _START_TEMPERATURE(self):
+        """Start an ADT7310TRZ temperature measurement.
         Conversion takes 240msec to complete.
 
         Parameters
         ----------
-        board : byte
-            Selected timing board (0:3).
+        None.
         """
-        payload = struct.pack("<B", board)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_START_TEMPERATURE,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_START_TEMPERATURE)
 
         if response.response_code == FlasherCommand.CMD_START_TEMPERATURE:
             return
 
         self._raise_error(response)
 
-    def _READ_TEMPERATURE(self, board):
-        """Read ADT7310TRZ temperature from selected timing board.
+    def _READ_TEMPERATURE(self):
+        """Read ADT7310TRZ temperature.
 
         Parameters
         ----------
-        board : byte
-            Selected timing board (0:3).
+        None.
 
         Returns
         -------
         float
             The temperature reading.
         """
-        payload = struct.pack("<B", board)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_TEMPERATURE,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_TEMPERATURE)
 
         if response.response_code == FlasherCommand.CMD_READ_TEMPERATURE:
             return struct.unpack("<f", response.payload)[0]
 
         self._raise_error(response)
 
-    def _INIT_FLASHER(self, board):
-        """Initialise the selected timing board I/O pins.
+    def _SET_LED_CURRENT(self, current):
+        """Set the LED current.
 
         Parameters
         ----------
-        board : byte
-            Selected timing board (0:3).
+        current : byte
+            The 4 least significant bits enable/disable the photorelays which set the LED current.
+            A '1' enables the corresponding photorelay which shorts a resistor to increase the current.
+            Bit 0 shorts resistor R2 (18 Ohms).
+            Bit 3 shorts resistor R5 (33 Ohms).
+            Thus bit 3 has the largest effect on the LED current.
         """
-        payload = struct.pack("<B", board)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_INIT_FLASHER,
-                                payload)
-
-        if response.response_code == FlasherCommand.CMD_INIT_FLASHER:
-            return
-
-        self._raise_error(response)
-
-    def _SET_GPO_PIN(self, board, pin, on_off):
-        """Set the selected GPO pin on or off on the selected timing board.
-
-        Parameters
-        ----------
-        board : byte
-            Selected timing board (0:3).
-        pin : byte
-            Selected pin (0:1).
-        on_off : byte
-            State for selected pin: 0 (off) or 1 (on).
-        """
-        payload = struct.pack("<BBB", board, pin, on_off)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_GPO_PIN,
-                                payload)
-
-        if response.response_code == FlasherCommand.CMD_SET_GPO_PIN:
-            return
-
-        self._raise_error(response)
-
-    def _SET_LEDS(self, board, leds):
-        """Enable / disable the ten LEDs on the selected timing board.
-
-        Parameters
-        ----------
-        board : byte
-            Selected timing board (0:3).
-        leds : word (16 bits)
-            The 10 least significant bits enable/disable the LEDs.
-            If bit 0 is '1', LED 1 is enabled.
-            If bit 9 is '0', LED 10 is disabled.
-        """
-        payload = struct.pack("<BH", board, leds)
+        payload = struct.pack("<B", current)
         response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_LEDS,
                                 payload)
 
@@ -188,17 +141,15 @@ class FlasherCtl(iostack.IOStack):
 
         self._raise_error(response)
 
-    def _SET_PULSE_WIDTH(self, board, width):
-        """Set the DS1023 delay (pulse width) on the selected timing board.
+    def _SET_PULSE_WIDTH(self, width):
+        """Set the DS1023 delay (pulse width).
 
         Parameters
         ----------
-        board : byte
-            Selected timing board (0:3).
         width : byte
             The delay (pulse width) in 0.25ns increments.
         """
-        payload = struct.pack("<BB", board, width)
+        payload = struct.pack("<B", width)
         response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_PULSE_WIDTH,
                                 payload)
 
@@ -224,44 +175,19 @@ class FlasherCtl(iostack.IOStack):
 
         self._raise_error(response)
 
-    def _READ_TRIG(self, board):
-        """Read the status of the TRIG signal from selected timing board.
+    def _READ_SERIAL_NO(self):
+        """Read DS28CM00 serial number.
 
         Parameters
         ----------
-        board : byte
-            Selected timing board (0:3).
-
-        Returns
-        -------
-        byte
-            TRIG status (0 or 1).
-        """
-        payload = struct.pack("<B", board)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_TRIG,
-                                payload)
-
-        if response.response_code == FlasherCommand.CMD_READ_TRIG:
-            return struct.unpack("<B", response.payload)[0]
-
-        self._raise_error(response)
-
-    def _READ_SERIAL_NO(self, board):
-        """Read DS28CM00 serial number from selected timing board.
-
-        Parameters
-        ----------
-        board : byte
-            Selected timing board (0:3).
+        None.
 
         Returns
         -------
         6 * bytes
             The 48-bit serial number in big endian format.
         """
-        payload = struct.pack("<B", board)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_SERIAL_NO,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_SERIAL_NO)
 
         if response.response_code == FlasherCommand.CMD_READ_SERIAL_NO:
             return struct.unpack("6B", response.payload)
@@ -287,7 +213,7 @@ class FlasherCtl(iostack.IOStack):
 
 
 # Generate lookup maps
-FlasherError.lookup = {v: k for (k, v) in FlasherError.__dict__.iteritems()
+FlasherError.lookup = {v: k for (k, v) in FlasherError.__dict__.items()
                 if not k.startswith('__')}
 
 if __name__ == '__main__':
@@ -297,8 +223,8 @@ if __name__ == '__main__':
         try:
             flasher = FlasherCtl(sys.argv[1])
 
-            print "Toggling LED_BUILTIN"
-            print "Ctrl-C to exit..."
+            print("Toggling LED_BUILTIN")
+            print("Ctrl-C to exit...")
             while True:
                 flasher._LED_BUILTIN(1)
                 time.sleep(1)
@@ -306,4 +232,3 @@ if __name__ == '__main__':
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
-

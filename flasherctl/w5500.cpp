@@ -1,5 +1,5 @@
 #include <SPI.h>
-extern SPIClass SPI_0;
+extern SPIClass SPI_2;
 
 #include "w5500.h"
 
@@ -319,14 +319,14 @@ uint8_t w55_udp_end(uint8_t socket)
 // Helper functions
 uint8_t w55_exchange(uint8_t x)
 {
-  uint8_t result = SPI_0.transfer(x);
+  uint8_t result = SPI_2.transfer(x);
   return result;
 }
 
 
 void w55_transmit(uint8_t x)
 {
-  SPI_0.transfer(x);
+  SPI_2.transfer(x);
 }
 
 
@@ -334,7 +334,7 @@ void w55_enable(void)
 {
 //  W55_CS_PORT &= ~(1 << W55_CS_BIT);
   digitalWrite(SS,LOW);
-  //SPI_0.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
+  //SPI_2.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
 }
 
 
@@ -342,5 +342,5 @@ void w55_disable(void)
 {
 //  W55_CS_PORT |= (1 << W55_CS_BIT);
   digitalWrite(SS,HIGH);
-  //SPI_0.endTransaction();
+  //SPI_2.endTransaction();
 }

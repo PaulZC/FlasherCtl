@@ -1,14 +1,15 @@
 #include "flasher.h"
 #include "iostack.h"
 
-// Define the SPIClass for the W5500 using SERCOM4
 #include <SPI.h>
+// Define the SPIClass for the I2C/SPI Header using SERCOM0
 SPIClass SPI_0 (&PERIPH_SPI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_MOSI, PAD_SPI_TX, PAD_SPI_RX);
-// Define the SPIClass for the four timing boards
+// Define the SPIClass for the ADT7310 Temperature Sensor on the LED Board using SERCOM1
 SPIClass SPI_1 (&PERIPH_SPI1, PIN_SPI1_MISO, PIN_SPI1_SCK, PIN_SPI1_MOSI, PAD_SPI1_TX, PAD_SPI1_RX);
+// Define the SPIClass for the W5500 using SERCOM4
 SPIClass SPI_2 (&PERIPH_SPI2, PIN_SPI2_MISO, PIN_SPI2_SCK, PIN_SPI2_MOSI, PAD_SPI2_TX, PAD_SPI2_RX);
-SPIClass SPI_3 (&PERIPH_SPI3, PIN_SPI3_MISO, PIN_SPI3_SCK, PIN_SPI3_MOSI, PAD_SPI3_TX, PAD_SPI3_RX);
-SPIClass SPI_4 (&PERIPH_SPI4, PIN_SPI4_MISO, PIN_SPI4_SCK, PIN_SPI4_MOSI, PAD_SPI4_TX, PAD_SPI4_RX);
+
+#include <Wire.h> // Needed for the DS28CM00 serial number
 
 // Network configuration
 static const uint16_t udp_listen_port = 512;
@@ -19,9 +20,8 @@ enum flasherctl_cmd_code {CMD_LED_BUILTIN = 0x0000,
                           CMD_START_TEMPERATURE,
                           CMD_READ_TEMPERATURE,
                           CMD_INIT_FLASHER,
-                          CMD_SET_GPO_PIN,
                           CMD_READ_SERIAL_NO,
-                          CMD_SET_LEDS,
+                          CMD_SET_LED_CURRENT,
                           CMD_SET_PULSE_WIDTH,
                           CMD_TEST_PULSE,
                           CMD_READ_TRIG,
@@ -31,25 +31,19 @@ enum flasherctl_cmd_code {CMD_LED_BUILTIN = 0x0000,
 enum iostack_error_code flasherctl_LED_BUILTIN(struct iostack_request *request);
 enum iostack_error_code flasherctl_START_TEMPERATURE(struct iostack_request *request);
 enum iostack_error_code flasherctl_READ_TEMPERATURE(struct iostack_request *request);
-enum iostack_error_code flasherctl_INIT_FLASHER(struct iostack_request *request);
-enum iostack_error_code flasherctl_SET_GPO_PIN(struct iostack_request *request);
 enum iostack_error_code flasherctl_READ_SERIAL_NO(struct iostack_request *request);
-enum iostack_error_code flasherctl_SET_LEDS(struct iostack_request *request);
+enum iostack_error_code flasherctl_SET_LED_CURRENT(struct iostack_request *request);
 enum iostack_error_code flasherctl_SET_PULSE_WIDTH(struct iostack_request *request);
 enum iostack_error_code flasherctl_TEST_PULSE(struct iostack_request *request);
-enum iostack_error_code flasherctl_READ_TRIG(struct iostack_request *request);
 
 // Command definitions
 static struct iostack_cmd flasher_cmds[] = {{CMD_LED_BUILTIN, flasherctl_LED_BUILTIN},
                                             {CMD_START_TEMPERATURE, flasherctl_START_TEMPERATURE},
                                             {CMD_READ_TEMPERATURE, flasherctl_READ_TEMPERATURE},
-                                            {CMD_INIT_FLASHER, flasherctl_INIT_FLASHER},
-                                            {CMD_SET_GPO_PIN, flasherctl_SET_GPO_PIN},
                                             {CMD_READ_SERIAL_NO, flasherctl_READ_SERIAL_NO},
-                                            {CMD_SET_LEDS, flasherctl_SET_LEDS},
+                                            {CMD_SET_LED_CURRENT, flasherctl_SET_LED_CURRENT},
                                             {CMD_SET_PULSE_WIDTH, flasherctl_SET_PULSE_WIDTH},
-                                            {CMD_TEST_PULSE, flasherctl_TEST_PULSE},
-                                            {CMD_READ_TRIG, flasherctl_READ_TRIG}};
+                                            {CMD_TEST_PULSE, flasherctl_TEST_PULSE}};
 
 static struct iostack_subsystem flasher_subsystem = {.id = SYS_FLASHER, .cmds = flasher_cmds};
 
@@ -63,47 +57,45 @@ void setup()
 
   pinMode(SS, OUTPUT); // CS for the W5500
   digitalWrite(SS, HIGH);
-  pinMode(CS1_1, OUTPUT); // CSs for Timing Board 1
-  digitalWrite(CS1_1, HIGH);
-  pinMode(CS2_1, OUTPUT);
-  digitalWrite(CS2_1, HIGH);
-  pinMode(CS1_2, OUTPUT); // CSs for Timing Board 2
-  digitalWrite(CS1_2, HIGH);
-  pinMode(CS2_2, OUTPUT);
-  digitalWrite(CS2_2, HIGH);
-  pinMode(CS1_3, OUTPUT); // CSs for Timing Board 3
-  digitalWrite(CS1_3, HIGH);
-  pinMode(CS2_3, OUTPUT);
-  digitalWrite(CS2_3, HIGH);
-  pinMode(CS1_4, OUTPUT); // CSs for Timing Board 4
-  digitalWrite(CS1_4, HIGH);
-  pinMode(CS2_4, OUTPUT);
-  digitalWrite(CS2_4, HIGH);
-  
+
+  pinMode(ADT7310_CS, OUTPUT); // CS for the ADT7310
+  digitalWrite(ADT7310_CS, HIGH);
+
+  // Pins for the DS1023-25
+  // 8-bit data, MSB (D7) first
+  // Minimum CLK pulse width: 50ns
+  pinMode(DS1023_LE, OUTPUT); // Latch Enable for the DS1023
+  digitalWrite(DS1023_LE, LOW); // Only raise LE when clocking in a new delay value
+  pinMode(DS1023_CLK, OUTPUT); // Clock for the DS1023
+  digitalWrite(DS1023_CLK, LOW); // Data pin is read on the rising edge of the clock
+  pinMode(DS1023_D, OUTPUT); // Serial data input for the DS1023
+  digitalWrite(DS1023_D, LOW);
+
+  // LED Current: default to minimum brightness (A0-A3 LOW)
+  pinMode(LED_A0, OUTPUT);
+  digitalWrite(LED_A0, LOW);
+  pinMode(LED_A1, OUTPUT);
+  digitalWrite(LED_A1, LOW);
+  pinMode(LED_A2, OUTPUT);
+  digitalWrite(LED_A2, LOW);
+  pinMode(LED_A3, OUTPUT);
+  digitalWrite(LED_A3, LOW);
+
   // Wait for Vcc to stabilise
   delay(2000);
 
   // Initialise the SPI ports
-  SPI_0.begin(); // Ethernet
-  SPI_0.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0)); // SPI_0 is always in mode 0
-  
-  // The mode for SPI_1 - SPI_4 is set by the appropriate beginTransaction
-  SPI_1.begin(); // Timing Board 0
-  SPI_2.begin(); // Timing Board 1
-  SPI_3.begin(); // Timing Board 2
-  SPI_4.begin(); // Timing Board 3
+  SPI_2.begin(); // Ethernet
+  SPI_2.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0)); // SPI_2 is always in mode 0
 
-  // Initialise the timing board I/O pins
-  flasher_INIT_FLASHER((uint8_t)0);
-  flasher_INIT_FLASHER((uint8_t)1);
-  flasher_INIT_FLASHER((uint8_t)2);
-  flasher_INIT_FLASHER((uint8_t)3);
+  // The mode for SPI_1 is set by the appropriate beginTransaction
+  SPI_1.begin(); // ADT7310 Temperature sensor
 
-  // Initialise the temperature sensors - to stop the continuous conversions
-  flasher_START_TEMPERATURE((uint8_t)0);
-  flasher_START_TEMPERATURE((uint8_t)1);
-  flasher_START_TEMPERATURE((uint8_t)2);
-  flasher_START_TEMPERATURE((uint8_t)3);
+  // Start I2C for the DS28CM00 serial number
+  Wire.begin();
+
+  // Initialise the temperature sensor - to stop the continuous conversions
+  flasher_START_TEMPERATURE();
 
   // Initialise subsystems
   // - serial communication via USB
@@ -157,7 +149,7 @@ enum iostack_error_code flasherctl_LED_BUILTIN(struct iostack_request *request)
 
   uint8_t *on_off = (uint8_t *) request->payload;
   uint16_t error = flasher_LED_BUILTIN(*on_off);
-  
+
   if (error == 0) {
     flasherctl_send_acknowledge(request);
   } else {
@@ -169,11 +161,10 @@ enum iostack_error_code flasherctl_LED_BUILTIN(struct iostack_request *request)
 
 enum iostack_error_code flasherctl_START_TEMPERATURE(struct iostack_request *request)
 {
-  if (request->size != 1)
+  if (request->size != 0)
     return IOSTACK_ERR_INVALID_SIZE;
 
-  uint8_t *board = (uint8_t *) request->payload;
-  uint16_t error = flasher_START_TEMPERATURE((uint8_t) *board);
+  uint16_t error = flasher_START_TEMPERATURE();
 
   if (error == 0) {
     flasherctl_send_acknowledge(request);
@@ -186,12 +177,11 @@ enum iostack_error_code flasherctl_START_TEMPERATURE(struct iostack_request *req
 
 enum iostack_error_code flasherctl_READ_TEMPERATURE(struct iostack_request *request)
 {
-  if (request->size != 1)
+  if (request->size != 0)
     return IOSTACK_ERR_INVALID_SIZE;
 
-  uint8_t *board = (uint8_t *) request->payload;
   uint16_t error = 0;
-  float val = flasher_READ_TEMPERATURE((uint8_t) *board, &error);
+  float val = flasher_READ_TEMPERATURE(&error);
 
   if (error) {
     flasherctl_send_error(request, error);
@@ -204,51 +194,14 @@ enum iostack_error_code flasherctl_READ_TEMPERATURE(struct iostack_request *requ
   return IOSTACK_ERR_OKAY;
 }
 
-enum iostack_error_code flasherctl_INIT_FLASHER(struct iostack_request *request)
-{
-  if (request->size != 1)
-    return IOSTACK_ERR_INVALID_SIZE;
-
-  uint8_t *board = (uint8_t *) request->payload;
-  uint16_t error = flasher_INIT_FLASHER((uint8_t) *board);
-
-  if (error == 0) {
-    flasherctl_send_acknowledge(request);
-  } else {
-    flasherctl_send_error(request, error);
-  }
-
-  return IOSTACK_ERR_OKAY;
-}
-
-enum iostack_error_code flasherctl_SET_GPO_PIN(struct iostack_request *request)
-{
-  if (request->size != 3)
-    return IOSTACK_ERR_INVALID_SIZE;
-
-  uint8_t *board = (uint8_t *) request->payload;
-  uint8_t *pin = (uint8_t *) request->payload + 1;
-  uint8_t *on_off = (uint8_t *) request->payload + 2;
-  uint16_t error = flasher_SET_GPO_PIN((uint8_t) *board, (uint8_t) *pin, (uint8_t) *on_off);
-
-  if (error == 0) {
-    flasherctl_send_acknowledge(request);
-  } else {
-    flasherctl_send_error(request, error);
-  }
-
-  return IOSTACK_ERR_OKAY;
-}
-
 enum iostack_error_code flasherctl_READ_SERIAL_NO(struct iostack_request *request)
 {
-  if (request->size != 1)
+  if (request->size != 0)
     return IOSTACK_ERR_INVALID_SIZE;
 
-  uint8_t *board = (uint8_t *) request->payload;
   uint8_t serial_no[6];
   uint8_t *serial_ptr = serial_no;
-  uint16_t error = flasher_READ_SERIAL_NO((uint8_t) *board, serial_ptr);
+  uint16_t error = flasher_READ_SERIAL_NO(serial_ptr);
 
   if (error) {
     flasherctl_send_error(request, error);
@@ -261,15 +214,13 @@ enum iostack_error_code flasherctl_READ_SERIAL_NO(struct iostack_request *reques
   return IOSTACK_ERR_OKAY;
 }
 
-enum iostack_error_code flasherctl_SET_LEDS(struct iostack_request *request)
+enum iostack_error_code flasherctl_SET_LED_CURRENT(struct iostack_request *request)
 {
-  if (request->size != 3)
+  if (request->size != 1)
     return IOSTACK_ERR_INVALID_SIZE;
 
-  uint8_t *board = (uint8_t *) request->payload;
-  uint8_t *lo_leds = (uint8_t *) request->payload + 1;
-  uint8_t *hi_leds = (uint8_t *) request->payload + 2;
-  uint16_t error = flasher_SET_LEDS((uint8_t) *board, (uint8_t) *hi_leds, (uint8_t) *lo_leds);
+  uint8_t *current = (uint8_t *) request->payload;
+  uint16_t error = flasher_SET_LED_CURRENT((uint8_t) *current);
 
   if (error == 0) {
     flasherctl_send_acknowledge(request);
@@ -282,12 +233,11 @@ enum iostack_error_code flasherctl_SET_LEDS(struct iostack_request *request)
 
 enum iostack_error_code flasherctl_SET_PULSE_WIDTH(struct iostack_request *request)
 {
-  if (request->size != 2)
+  if (request->size != 1)
     return IOSTACK_ERR_INVALID_SIZE;
 
-  uint8_t *board = (uint8_t *) request->payload;
-  uint8_t *width = (uint8_t *) request->payload + 1;
-  uint16_t error = flasher_SET_PULSE_WIDTH((uint8_t) *board, (uint8_t) *width);
+  uint8_t *width = (uint8_t *) request->payload;
+  uint16_t error = flasher_SET_PULSE_WIDTH((uint8_t) *width);
 
   if (error == 0) {
     flasherctl_send_acknowledge(request);
@@ -305,7 +255,7 @@ enum iostack_error_code flasherctl_TEST_PULSE(struct iostack_request *request)
 
   uint8_t *on_off = (uint8_t *) request->payload;
   uint16_t error = flasher_TEST_PULSE((uint8_t) *on_off);
-  
+
   if (error == 0) {
     flasherctl_send_acknowledge(request);
   } else {
@@ -314,30 +264,3 @@ enum iostack_error_code flasherctl_TEST_PULSE(struct iostack_request *request)
 
   return IOSTACK_ERR_OKAY;
 }
-
-enum iostack_error_code flasherctl_READ_TRIG(struct iostack_request *request)
-{
-  if (request->size != 1)
-    return IOSTACK_ERR_INVALID_SIZE;
-
-  uint8_t *board = (uint8_t *) request->payload;
-  uint8_t trig[1];
-  uint8_t *trig_ptr = trig;
-  uint16_t error = flasher_READ_TRIG((uint8_t) *board, trig_ptr);
-
-  if (error) {
-    flasherctl_send_error(request, error);
-  } else {
-    iostack_response_begin(request, request->request_code);
-    iostack_response_write(request, &trig, sizeof(trig));
-    iostack_response_end(request);
-  }
-
-  return IOSTACK_ERR_OKAY;
-}
-
-
-
-
-
-

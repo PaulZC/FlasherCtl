@@ -26,14 +26,14 @@ try:
     nsent, nrecvd = 0, 0
     dts = []
     while True:
-        payload = bytearray(random.randint(0, 255) for i in xrange(length))
+        payload = bytearray(random.randint(0, 255) for i in range(length))
         t0 = time.time()
 
         nsent += 1
         try:
             io.ping(payload)
         except iostack.TimeoutError:
-            print "timed out"
+            print("timed out")
             continue
 
         dt = 1000.0 * (time.time() - t0)

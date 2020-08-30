@@ -47,7 +47,7 @@ class Status(object):
 
 # Generate lookup maps
 for c in Command, Register, Status:
-    c.lookup = {v: k for (k, v) in c.__dict__.iteritems()
+    c.lookup = {v: k for (k, v) in c.__dict__.items()
                 if not k.startswith('__')}
 
 
@@ -130,7 +130,8 @@ class IOStack(object):
         self.cs.connect((ip, port))
         self.cs.settimeout(timeout)
         if self.verbosity:
-            print >> sys.stderr, "IOStack: opened connection to %s:%i, %.0f ms timeout" % (ip, port, 1000 * timeout)
+            #print >> sys.stderr, "IOStack: opened connection to %s:%i, %.0f ms timeout" % (ip, port, 1000 * timeout)
+            print ("IOStack: opened connection to %s:%i, %.0f ms timeout" % (ip, port, 1000 * timeout))
 
     def multi_request(self, subsystem_id, request_code, payload, broadcast=False,
                       max_retries=None):
