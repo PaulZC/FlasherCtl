@@ -138,9 +138,9 @@ class FlasherCtl(iostack.IOStack):
         """
         
         payload = struct.pack("<B", current)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_LEDS, payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_LED_CURRENT, payload)
 
-        if response.response_code == FlasherCommand.CMD_SET_LEDS:
+        if response.response_code == FlasherCommand.CMD_SET_LED_CURRENT:
             return
 
         self._raise_error(response)

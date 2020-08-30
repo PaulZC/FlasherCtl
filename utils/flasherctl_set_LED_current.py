@@ -24,5 +24,5 @@ if __name__ == '__main__':
     # Create connection
     flasher = flasherctl.FlasherCtl(args.ip, args.p, verbosity=0)
 
-    print "configuring LED current"
+    print("configuring LED current")
     flasher._SET_LED_CURRENT(args.current)

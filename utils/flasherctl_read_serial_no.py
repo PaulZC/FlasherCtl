@@ -22,5 +22,5 @@ if __name__ == '__main__':
     # Create connection
     flasher = flasherctl.FlasherCtl(args.ip, args.p, verbosity=0)
 
-    serial_no = ''.join(format(x, '02x') for x in flasher._READ_SERIAL_NO(args.board))
-    print('Board %d serial number is 0x%s' % (args.board, serial_no))
+    serial_no = ''.join(format(x, '02x') for x in flasher._READ_SERIAL_NO())
+    print('Serial number is 0x%s' % serial_no)

@@ -26,20 +26,20 @@ uint16_t flasher_TEST_PULSE(uint8_t on_off)
 
   if (on_off == 0)
   {
-    digitalWrite(PIN_LED2, 0);
+    digitalWrite(PIN_LED2, LOW);
   }
   else if (on_off == 1)
   {
-    digitalWrite(PIN_LED2, 1);
+    digitalWrite(PIN_LED2, HIGH);
   }
   else if (on_off == 2)
   {
-    digitalWrite(PIN_LED2, 1);
-    digitalWrite(PIN_LED2, 1); // NOP
-    digitalWrite(PIN_LED2, 1); // NOP
-    digitalWrite(PIN_LED2, 1); // NOP
-    digitalWrite(PIN_LED2, 1); // NOP
-    digitalWrite(PIN_LED2, 0);
+    digitalWrite(PIN_LED2, HIGH);
+    digitalWrite(PIN_LED2, HIGH); // NOP
+    digitalWrite(PIN_LED2, HIGH); // NOP
+    digitalWrite(PIN_LED2, HIGH); // NOP
+    digitalWrite(PIN_LED2, HIGH); // NOP
+    digitalWrite(PIN_LED2, LOW);
   }
   else
   {
@@ -83,23 +83,28 @@ void start_temperature(SPIClass this_spi, int this_cs)
 
 float read_temperature(SPIClass this_spi, int this_cs)
 {
-  uint8_t hi_byte;
-  uint8_t lo_byte;
-  int16_t temperature_bits; // Two's complement
+  struct {
+    union {
+      int16_t temperature; // Little endian
+      struct {
+        uint8_t lo_byte;
+        uint8_t hi_byte;
+      } bytes;
+    };
+  } temp_reg;
   float temperature;
 
   // Read temperature from this SPI using this CS
   this_spi.beginTransaction(SPISettings(SPI_SPEED, MSBFIRST, SPI_MODE3)); // ADT7310 needs SPI Mode 3
   digitalWrite(this_cs,LOW); // Pull CS low
   this_spi.transfer(0x50); // Send command byte: Read, Register 2 (temperature value register (16-bit))
-  hi_byte = this_spi.transfer(0xff); // Read MSB
-  lo_byte = this_spi.transfer(0xff); // Read LSB
+  temp_reg.bytes.hi_byte = this_spi.transfer(0xff); // Read MSB
+  temp_reg.bytes.lo_byte = this_spi.transfer(0xff); // Read LSB
   digitalWrite(this_cs,HIGH); // Pull CS high
   this_spi.endTransaction();
 
   // Convert the temperature to float
-  temperature_bits = (((uint16_t)hi_byte) << 8) | ((uint16_t)lo_byte);
-  temperature = (float)temperature_bits;
+  temperature = (float)temp_reg.temperature;
   temperature = temperature / 128.0;
 
   return temperature;
@@ -109,6 +114,12 @@ uint16_t flasher_SET_LED_CURRENT(uint8_t current)
 // Configures the LED current
 {
   uint16_t error = 0;
+
+  if (current > 0x0F)
+  {
+    error = FLASHER_EBVALUE;
+    return error;
+  }
 
   digitalWrite(LED_A0, ((current >> 0) & 0x01));
   digitalWrite(LED_A1, ((current >> 1) & 0x01));

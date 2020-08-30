@@ -43,25 +43,25 @@ if __name__ == '__main__':
         nsent, nrecvd = 0, 0
         dts = []
         while True:
-            payload = bytearray(random.randint(0, 255) for i in xrange(args.s))
+            payload = bytearray(random.randint(0, 255) for i in range(args.s))
             t0 = time.time()
 
             nsent += 1
             try:
                 io.ping(payload)
             except iostack.TimeoutError:
-                print "timed out"
+                print("timed out")
                 continue
 
             dt = 1000.0 * (time.time() - t0)
             nrecvd += 1
             dts.append(dt)
 
-            print "%i byte%s from %s: time=%.3f ms" % (args.s, "" if args.s == 1 else "s", args.ip, dt)
+            print("%i byte%s from %s: time=%.3f ms" % (args.s, "" if args.s == 1 else "s", args.ip, dt))
             time.sleep(max(args.i - dt / 1000.0, 0.0))
     except KeyboardInterrupt:
         print
         if nsent > 0 and len(dts) > 0:
-            print "--- %s ping statistics ---" % args.ip
-            print "%i packet%s transmitted, %i packet%s received, %.1f%% packet loss" % (nsent, "" if nsent == 1 else "s", nrecvd, "" if nrecvd == 1 else "s", 100 * (nsent - nrecvd) / nsent)
-            print "round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms" % (min(dts), sum(dts) / len(dts), max(dts), std(dts))
+            print("--- %s ping statistics ---" % args.ip)
+            print("%i packet%s transmitted, %i packet%s received, %.1f%% packet loss" % (nsent, "" if nsent == 1 else "s", nrecvd, "" if nrecvd == 1 else "s", 100 * (nsent - nrecvd) / nsent))
+            print("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms" % (min(dts), sum(dts) / len(dts), max(dts), std(dts)))

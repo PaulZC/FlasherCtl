@@ -24,4 +24,4 @@ if __name__ == '__main__':
 
     flasher._START_TEMPERATURE()
     time.sleep(0.5)
-    print "Temperature is %f C" % flasher._READ_TEMPERATURE()
+    print("Temperature is %f C" % flasher._READ_TEMPERATURE())

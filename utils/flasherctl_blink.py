@@ -22,5 +22,5 @@ if __name__ == '__main__':
     # Create connection
     flasher = flasherctl.FlasherCtl(args.ip, args.p, verbosity=0)
 
-    print "setting LED_BUILTIN to", args.on_off
+    print("setting LED_BUILTIN to", args.on_off)
     flasher._LED_BUILTIN(args.on_off)

@@ -21,10 +21,10 @@ def get_ip_interfaces():
 
 def unpack_ethernet_configuration(reply):
     reply = reply[5:]
-    gateway = map(ord, reply[0:4])
-    subnet = map(ord, reply[4:8])
-    mac = map(ord, reply[8:14])
-    ip = map(ord, reply[14:18])
+    gateway = list(reply[0:4])
+    subnet = list(reply[4:8])
+    mac = list(reply[8:14])
+    ip = list(reply[14:18])
 
     return gateway, subnet, mac, ip
 
@@ -37,7 +37,7 @@ def pack_ethernet_configuration(gateway, subnet, mac, ip):
 
 def prepare_socket(interface, interface_ip, timeout=1.0):
     cs = socket(AF_INET, SOCK_DGRAM)
-    for local_port in xrange(1025, 65535):
+    for local_port in range(1025, 65535):
         try:
             cs.bind((interface_ip, local_port))
             break
@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
         if args.mac:
             for (gateway, subnet, mac, ip) in result:
-                if mac == args.mac:
+                if list(mac) == args.mac:
                     print("  found device with mac %s" % ":".join("%02x" % x for x in args.mac))
                     old_ip = ip
                     if args.ip:

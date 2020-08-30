@@ -24,5 +24,5 @@ if __name__ == '__main__':
     # Create connection
     flasher = flasherctl.FlasherCtl(args.ip, args.p, verbosity=0)
 
-    print "configuring pulse width"
+    print("configuring pulse width")
     flasher._SET_PULSE_WIDTH(args.width)

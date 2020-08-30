@@ -19,12 +19,10 @@ static uint8_t udp_socket = 0xff;
 enum flasherctl_cmd_code {CMD_LED_BUILTIN = 0x0000,
                           CMD_START_TEMPERATURE,
                           CMD_READ_TEMPERATURE,
-                          CMD_INIT_FLASHER,
                           CMD_READ_SERIAL_NO,
                           CMD_SET_LED_CURRENT,
                           CMD_SET_PULSE_WIDTH,
                           CMD_TEST_PULSE,
-                          CMD_READ_TRIG,
                           CMD_REPORT_FLASHERCTL_ERR=0xffff};
 
 // Command handlers
