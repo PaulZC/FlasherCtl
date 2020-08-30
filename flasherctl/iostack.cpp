@@ -16,6 +16,13 @@ enum iostack_error_code iostack_handle_ping(struct iostack_request *request);
 enum iostack_error_code iostack_handle_ethernet_configuration_read(struct iostack_request *request);
 enum iostack_error_code iostack_handle_ethernet_configuration_write(struct iostack_request *request, uint8_t *payload, uint16_t size);
 
+// Random Locally Administered Unicast MAC Addresses:
+// https://www.hellion.org.uk/cgi-bin/randmac.pl?scope=local&type=unicast
+// ee:ce:31:07:b0:e4
+// 96:8f:76:c0:da:cf
+// be:6c:c0:04:a0:51
+// 62:a2:09:a4:06:13
+
 // Configuration
 struct iostack_config iostack_default_config = {
   .magic = iostack_eeprom_magic,

@@ -77,9 +77,9 @@ class FlasherCtl(iostack.IOStack):
         ----------
         value : byte
             State for LED_BUILTIN: 0 (off) or 1 (on)."""
+        
         payload = struct.pack("<B", value)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_LED_BUILTIN,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_LED_BUILTIN, payload)
 
         if response.response_code == FlasherCommand.CMD_LED_BUILTIN:
             return
@@ -94,7 +94,9 @@ class FlasherCtl(iostack.IOStack):
         ----------
         None.
         """
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_START_TEMPERATURE)
+
+        payload = b''
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_START_TEMPERATURE, payload)
 
         if response.response_code == FlasherCommand.CMD_START_TEMPERATURE:
             return
@@ -113,7 +115,9 @@ class FlasherCtl(iostack.IOStack):
         float
             The temperature reading.
         """
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_TEMPERATURE)
+
+        payload = b''
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_TEMPERATURE, payload)
 
         if response.response_code == FlasherCommand.CMD_READ_TEMPERATURE:
             return struct.unpack("<f", response.payload)[0]
@@ -132,9 +136,9 @@ class FlasherCtl(iostack.IOStack):
             Bit 3 shorts resistor R5 (33 Ohms).
             Thus bit 3 has the largest effect on the LED current.
         """
+        
         payload = struct.pack("<B", current)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_LEDS,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_LEDS, payload)
 
         if response.response_code == FlasherCommand.CMD_SET_LEDS:
             return
@@ -150,8 +154,7 @@ class FlasherCtl(iostack.IOStack):
             The delay (pulse width) in 0.25ns increments.
         """
         payload = struct.pack("<B", width)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_PULSE_WIDTH,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_SET_PULSE_WIDTH, payload)
 
         if response.response_code == FlasherCommand.CMD_SET_PULSE_WIDTH:
             return
@@ -166,9 +169,9 @@ class FlasherCtl(iostack.IOStack):
         on_off : byte
             State: 0 (off) or 1 (on).
         """
+        
         payload = struct.pack("<B", on_off)
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_TEST_PULSE,
-                                payload)
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_TEST_PULSE, payload)
 
         if response.response_code == FlasherCommand.CMD_TEST_PULSE:
             return
@@ -187,7 +190,9 @@ class FlasherCtl(iostack.IOStack):
         6 * bytes
             The 48-bit serial number in big endian format.
         """
-        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_SERIAL_NO)
+
+        payload = b''
+        response = self.request(SYS_FLASHER, FlasherCommand.CMD_READ_SERIAL_NO, payload)
 
         if response.response_code == FlasherCommand.CMD_READ_SERIAL_NO:
             return struct.unpack("6B", response.payload)

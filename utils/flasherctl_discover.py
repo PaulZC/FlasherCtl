@@ -71,10 +71,10 @@ def query_interface(interface, interface_ip, port):
             break
 
         devices.append((gateway, subnet, mac, ip))
-        print "  mac %s, ip %s, subnet %s, gateway %s" % (":".join("%02x" % m for m in mac),
+        print("  mac %s, ip %s, subnet %s, gateway %s" % (":".join("%02x" % m for m in mac),
                                                           ".".join(map(str, ip)),
                                                           ".".join(map(str, subnet)),
-                                                          ".".join(map(str, gateway)))
+                                                          ".".join(map(str, gateway))))
 
     return devices
 
@@ -137,14 +137,14 @@ if __name__ == '__main__':
         if args.interface and interface != args.interface:
             continue
 
-        print "querying interface %s on interface_ip %s:" % (interface, interface_ip)
+        print("querying interface %s on interface_ip %s:" % (interface, interface_ip))
 
         result = query_interface(interface, interface_ip, args.port)
 
         if args.mac:
             for (gateway, subnet, mac, ip) in result:
                 if mac == args.mac:
-                    print "  found device with mac %s" % ":".join("%02x" % x for x in args.mac)
+                    print("  found device with mac %s" % ":".join("%02x" % x for x in args.mac))
                     old_ip = ip
                     if args.ip:
                         ip = args.ip
@@ -154,7 +154,7 @@ if __name__ == '__main__':
                         gateway = args.gateway
 
                     if args.ip or args.subnet or args.gateway:
-                        print "  sending new configuration..."
+                        print("  sending new configuration...")
                         configure_device(interface, interface_ip, args.port, old_ip,
                                          gateway, subnet, mac, ip)
 
