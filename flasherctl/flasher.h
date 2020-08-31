@@ -30,10 +30,10 @@
 #define SCOM0_3 3 // PA07
 
 // ADT7310 Temperature Sensor on the LED Board (SPI_1 : SERCOM1)
-#define ADT7310_CS 7 // PB08
+#define ADT7310_CS 7 // PA16
 
 // DS1023-25
-#define DS1023_LE 9   // PA22
+#define DS1023_LE 8   // PA22
 #define DS1023_CLK 16 // PA21
 #define DS1023_D 15   // PA20
 
